@@ -19,6 +19,7 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         isbn.returnKeyType = UIReturnKeyType.Search
+        portada.image = UIImage(named: "img1.jpg")
     }
 
     override func didReceiveMemoryWarning() {
@@ -47,30 +48,46 @@ class ViewController: UIViewController {
                     let json = try NSJSONSerialization.JSONObjectWithData(datos!,
                         options: NSJSONReadingOptions.MutableLeaves)
                     let dico = json as! NSDictionary
-                    let dico1 = dico["ISBN:"+self.isbn.text!] as! NSDictionary
-                    let title = dico1["title"] as! String
-                    self.titulo.text = title
-                    let authors = dico1["authors"] as! NSArray
-                    var author = NSDictionary()
-                    var authorsText = ""
-                        for(var i=0 ; i < authors.count ; i+=1){
-                            author = authors[i] as! NSDictionary
-                        if(authorsText != "")
-                        {
-                            authorsText += "," + (author["name"] as! String)
+                    if(dico["ISBN:"+self.isbn.text!] != nil){
+                        let dico1 = dico["ISBN:"+self.isbn.text!] as! NSDictionary
+                        let title = dico1["title"] as! String
+                        self.titulo.text = title
+                    
+                        if((dico1["by_statement"]) != nil){
+                            self.results.text = dico1["by_statement"] as! String
                         }
                         else{
-                            authorsText += author["name"] as! String
+                            let authors = dico1["authors"] as! NSArray
+                            var author = NSDictionary()
+                            var authorsText = ""
+                            for(var i=0 ; i < authors.count ; i+=1){
+                                author = authors[i] as! NSDictionary
+                                if(authorsText != "")
+                                {
+                                    authorsText += "," + (author["name"] as! String)
+                                }
+                                else{
+                                    authorsText += author["name"] as! String
+                                }
+                            }
+                            self.results.text = authorsText
                         }
-                    }
-                    self.results.text = authorsText
                         if((dico1["cover"]) != nil){
                             let cover = dico1["cover"] as! NSDictionary
-                            let url = cover["small"] as! String
-                            let urls = NSURL(string: url)
-                            self.portada.image = self.getImage(urls!)
+                            let url = cover["medium"] as! String
+                            self.portada.image = UIImage(data: NSData(contentsOfURL: NSURL(string:url)!)!)
+                        }
+                        else{
+                            self.portada.image = UIImage(named: "img1.jpg")
                         }
                         self.isbn.resignFirstResponder()
+                    }
+                    else{
+                        let alertController = UIAlertController(title: "Error", message:
+                            "Not a valid ISBN", preferredStyle: UIAlertControllerStyle.Alert)
+                        alertController.addAction(UIAlertAction(title: "Dismiss", style: UIAlertActionStyle.Default,handler: nil))
+                        self.presentViewController(alertController, animated: true, completion: nil)
+                        }
                     }
                     catch{
                     }
@@ -83,7 +100,7 @@ class ViewController: UIViewController {
     }
     func getImage(url : NSURL)->UIImage{
         let session = NSURLSession.sharedSession()
-        var image = UIImage()
+        var image = UIImage(named: "img1.jpg")
         let bloque = { (datos:NSData?, resp : NSURLResponse?,error : NSError?)->Void in
             if error?.code != nil {
                 dispatch_sync(dispatch_get_main_queue(), {
@@ -100,7 +117,8 @@ class ViewController: UIViewController {
         }
         let dt = session.dataTaskWithURL(url, completionHandler: bloque)
         dt.resume()
-        return image
+        print(image!)
+        return image!
     }
 }
 
