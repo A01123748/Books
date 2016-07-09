@@ -12,6 +12,8 @@ class ViewController: UIViewController {
 
     @IBOutlet weak var isbn: UITextField!
     @IBOutlet weak var results: UITextView!
+    @IBOutlet weak var titulo: UITextField!
+    @IBOutlet weak var portada: UIImageView!
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -39,15 +41,66 @@ class ViewController: UIViewController {
                     self.presentViewController(alertController, animated: true, completion: nil)
                 })
             } else{
-                let texto = NSString(data:datos!, encoding: NSUTF8StringEncoding)
+                //let texto = NSString(data:datos!, encoding: NSUTF8StringEncoding)
                 dispatch_sync(dispatch_get_main_queue(), {
-                    self.results.text = texto! as String
+                    do{
+                    let json = try NSJSONSerialization.JSONObjectWithData(datos!,
+                        options: NSJSONReadingOptions.MutableLeaves)
+                    let dico = json as! NSDictionary
+                    let dico1 = dico["ISBN:"+self.isbn.text!] as! NSDictionary
+                    let title = dico1["title"] as! String
+                    self.titulo.text = title
+                    let authors = dico1["authors"] as! NSArray
+                    var author = NSDictionary()
+                    var authorsText = ""
+                        for(var i=0 ; i < authors.count ; i+=1){
+                            author = authors[i] as! NSDictionary
+                        if(authorsText != "")
+                        {
+                            authorsText += "," + (author["name"] as! String)
+                        }
+                        else{
+                            authorsText += author["name"] as! String
+                        }
+                    }
+                    self.results.text = authorsText
+                        if((dico1["cover"]) != nil){
+                            let cover = dico1["cover"] as! NSDictionary
+                            let url = cover["small"] as! String
+                            let urls = NSURL(string: url)
+                            self.portada.image = self.getImage(urls!)
+                        }
+                        self.isbn.resignFirstResponder()
+                    }
+                    catch{
+                    }
                 })
             }
         }
         
         let dt = session.dataTaskWithURL(url!, completionHandler: bloque)
         dt.resume()
+    }
+    func getImage(url : NSURL)->UIImage{
+        let session = NSURLSession.sharedSession()
+        var image = UIImage()
+        let bloque = { (datos:NSData?, resp : NSURLResponse?,error : NSError?)->Void in
+            if error?.code != nil {
+                dispatch_sync(dispatch_get_main_queue(), {
+                    let alertController = UIAlertController(title: "Error", message:
+                        error?.description, preferredStyle: UIAlertControllerStyle.Alert)
+                    alertController.addAction(UIAlertAction(title: "Dismiss", style: UIAlertActionStyle.Default,handler: nil))
+                    self.presentViewController(alertController, animated: true, completion: nil)
+                })
+            } else{
+                dispatch_sync(dispatch_get_main_queue(), {
+                image = UIImage (data: datos!)!
+                })
+            }
+        }
+        let dt = session.dataTaskWithURL(url, completionHandler: bloque)
+        dt.resume()
+        return image
     }
 }
 
